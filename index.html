@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高级交互对比时间线系统</title>
+    <style>
+        /* ==========================================================================
+           1. 全局配置与设计变量（所有模块的颜色、背景可在 :root 或特定事件中调节）
+           ========================================================================== */
+        :root {
+            --global-bg: #121214;
+            --panel-bg: #1a1a1e;
+            --text-main: #ffffff;
+            --text-sub: #a0aec0;
+            --axis-line-color: #4a5568;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            
+            /* 分类颜色池（对应文件1中的分类类型，可自行调节） */
+            --color-cat1: #3b82f6; /* 蓝色类型 */
+            --color-cat2: #10b981; /* 绿色类型 */
+            --color-cat3: #f59e0b; /* 黄色类型 */
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font-family);
+            background-color: var(--global-bg);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: background 0.5s ease;
+        }
+
+        /* ==========================================================================
+           2. 顶部工具栏 & 分类过滤器（平时隐藏，点击唤出）
+           ========================================================================== */
+        .top-navbar {
+            position: fixed;
+            top: 0; left: 0; width: 100%;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(5px);
+        }
+
+        .filter-toggle-btn {
+            background: #2d3748;
+            color: white;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .filter-panel {
+            position: fixed;
+            top: -100px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--panel-bg);
+            padding: 15px 25px;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            z-index: 99;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            transition: top 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid #2d3748;
+            border-top: none;
+        }
+        .filter-panel.show { top: 50px; }
+
+        .filter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        /* ==========================================================================
+           3. 上半部分：事件详情展示面板（支持上下滑动，解耦排版）
+           ========================================================================== */
+        .detail-viewport {
+            flex: 1;
+            overflow-y: auto;
+            padding: 60px 40px 20px 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-size: cover;
+            background-position: center;
+            transition: all 0.5s ease;
+        }
+
+        .detail-container {
+            max-width: 1200px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 严格对应手绘图：左大图/视频，右文字信息 */
+            gap: 40px;
+            background: rgba(26, 26, 30, 0.85);
+            padding: 30px;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* 左侧多媒体区 */
+        .media-box {
+            width: 100%;
+            min-height: 350px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000;
+        }
+        .media-box img, .media-box video {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+
+        /* 右侧图文介绍区 */
+        .info-box {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+        .info-box h2 { font-size: 1.8rem; margin-bottom: 5px; color: #fff; }
+        .info-box .date-tag { font-size: 0.9rem; color: var(--text-sub); margin-bottom: 15px; }
+        .info-box .desc-text { font-size: 1rem; line-height: 1.7; color: #e2e8f0; margin-bottom: 20px; text-align: justify; }
+        
+        /* 底部小型图像/卡片介绍区 */
+        .sub-gallery {
+            display: flex;
+            gap: 15px;
+            margin-top: auto;
+        }
+        .sub-thumb {
+            width: 80px; height: 80px;
+            border-radius: 6px;
+            object-fit: cover;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        .info-box a.custom-link {
+            color: #60a5fa; text-decoration: none; font-weight: bold; margin-top: 10px; display: inline-block;
+        }
+        .info-box a.custom-link:hover { text-decoration: underline; }
+
+        /* ==========================================================================
+           4. 下半部分：横向可滑动轴 & 抽屉式隐藏管理
+           ========================================================================== */
+        .timeline-drawer {
+            height: 220px;
+            background: #171923;
+            border-top: 2px solid #2d3748;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            z-index: 90;
+        }
+        /* 轴完全隐藏时的状态 */
+        .timeline-drawer.hidden {
+            transform: translateY(180px); /* 仅留出底部唤出按钮区域 */
+        }
+
+        /* 隐藏/唤出触发小提手 */
+        .drawer-trigger {
+            position: absolute;
+            top: -30px; right: 30px;
+            background: #2d3748;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 0.8rem;
+            border: 2px solid #2d3748;
+            border-bottom: none;
+        }
+
+        /* 横向滑动视窗 */
+        .timeline-slider-view {
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: hidden;
+            position: relative;
+            padding: 40px 50px;
+            white-space: nowrap;
+            cursor: grab;
+        }
+        .timeline-slider-view:active { cursor: grabbing; }
+
+        /* 时间轴骨架（对应手绘图正中的横线） */
+        .axis-line {
+            position: absolute;
+            top: 55%;
+            left: 0;
+            height: 4px;
+            background-color: var(--axis-line-color);
+            z-index: 1;
+        }
+
+        /* 节点定位块 */
+        .timeline-node {
+            position: absolute;
+            top: 55%;
+            transform: translateY(-50%);
+            z-index: 2;
+            display: inline-block;
+        }
+
+        /* 节点上的圆点（单点发生事件） */
+        .node-dot {
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            background: #fff;
+            border: 3px solid var(--color-cat1);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: absolute;
+            top: 0; left: 0;
+            transform: translate(-50%, -50%);
+        }
+        .node-dot:hover, .timeline-node.active .node-dot {
+            transform: translate(-50%, -50%) scale(1.4);
+            box-shadow: 0 0 10px #fff;
+        }
+
+        /* 范围事件样式（对应手绘图里的横向矩形跨度条） */
+        .node-range-bar {
+            height: 12px;
+            border-radius: 6px;
+            background: var(--color-cat2);
+            cursor: pointer;
+            opacity: 0.7;
+            position: absolute;
+            top: -6px; /* 跨在轴线上 */
+            transition: all 0.2s;
+        }
+        .node-range-bar:hover, .timeline-node.active .node-range-bar {
+            opacity: 1;
+            height: 16px;
+            top: -8px;
+            box-shadow: 0 0 8px rgba(255,255,255,0.5);
+        }
+
+        /* 浮动标签（手绘图里的事件小框） */
+        .node-label {
+            position: absolute;
+            background: #2d3748;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #fff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            white-space: nowrap;
+            cursor: pointer;
+            border-bottom: 3px solid var(--color-cat1);
+        }
+        /* 动态控制标签交错排列（奇数在上，偶数在下，防止碰撞） */
+        .node-label.pos-top { bottom: 15px; transform: translateX(-50%); }
+        .node-label.pos-bottom { top: 15px; transform: translateX(-50%); }
+
+        /* 指引立柱线 */
+        .stem-line {
+            position: absolute;
+            width: 2px;
+            background: var(--axis-line-color);
+            z-index: 1;
+        }
+        .pos-top .stem-line { bottom: 0; left: 50%; height: 15px; }
+        .pos-bottom .stem-line { top: 0; left: 50%; height: 15px; }
+
+
+        /* ==========================================================================
+           5. 【手机移动端自适应方案】
+           ========================================================================== */
+        @media screen and (max-width: 768px) {
+            .detail-container {
+                grid-template-columns: 1fr; /* 左右分栏变为单列上下堆叠 */
+                gap: 20px;
+                padding: 15px;
+            }
+            .media-box { min-height: 200px; height: 220px; }
+            .timeline-drawer { height: 180px; }
+            .timeline-drawer.hidden { transform: translateY(140px); }
+            .node-label { font-size: 0.7rem; padding: 4px 8px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. 顶部控制器栏（筛选模块） -->
+    <nav class="top-navbar">
+        <button class="filter-toggle-btn" onclick="toggleFilterPanel()">⚙️ 筛选事件类型</button>
+        <div class="filter-panel" id="filterPanel">
+            <!-- 过滤器复选框将由 JavaScript 自动根据数据结构动态渲染 -->
+        </div>
+    </nav>
+
+    <!-- 2. 上半部分：事件详细页视窗 -->
+    <section class="detail-viewport" id="detailViewport">
+        <div class="detail-container" id="detailContent">
+            <!-- 点击时间轴后，此处内容将由系统动态秒速更新 -->
+            <div style="grid-column: span 2; text-align: center; color: var(--text-sub);">
+                <h2>请在下方时间轴上点击任意事件开始浏览</h2>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. 下半部分：横向滑动轴抽屉系统 -->
+    <footer class="timeline-drawer" id="timelineDrawer">
+        <div class="drawer-trigger" onclick="toggleDrawer()" id="drawerTriggerBtn">▼ 隐藏时间轴</div>
+        
+        <!-- 横向拖拽滑轨视窗 -->
+        <div class="timeline-slider-view" id="sliderView">
+            <div class="axis-line" id="axisLine"></div>
+            <!-- 时间节点和区间块将在此渲染 -->
+        </div>
+    </footer>
+
+    <!-- 4. 全局独立音频播放核心 -->
+    <audio id="bgAudio" loop></audio>
+
+    <!-- ==========================================================================
+       6. 核心数据管理仓（直接整合文件1与文件2，数据解耦，未来只需在此增删改）
+       ========================================================================== -->
+    <script>
+        /**
+         * 【数据配置说明书】：
+         * id: 唯一标识
+         * title: 事件简短标题（轴上显示的框）
+         * type: 事件类型分类（对应过滤器，可自动生成勾选框）
+         * color: 对应的分类在轴上的高亮颜色
+         * isRange: false表示是个时间点(点)；true表示是时间段(区间条)
+         * startPos: 轴上的绝对起点坐标（像素，例如 100, 400, 800，可随意调配间隔）
+         * endPos: 当isRange为true时的终点坐标
+         * 
+         * 【以下对应具体排版内容（文件2数据合并）】
+         * dateStr: 详情页显示的日期行
+         * mediaType: 'image' 或 'video'
+         * mediaUrl: 左侧展示的大图或视频源
+         * description: 右侧的长篇详细描述文字
+         * linkUrl: 扩展超链接（不需要可留空 ""）
+         * linkText: 按钮文本
+         * subThumbs: 右下角补充的多张小图数组
+         * pageBg: 该事件独立切换的专属背景大图（不设则用默认黑底）
+         * musicUrl: 该事件独特的背景音乐源（不设则静音）
+         */
+        const TIMELINE_DATA = [
+            {
+                id: 1,
+                title: "当事人 A 首次发布公开声明",
+                type: "当事人A行动",
+                color: "var(--color-cat1)",
+                isRange: false,
+                startPos: 150,
+                endPos: 0,
+                // 下面是页面排版配置
+                dateStr: "2026年3月1日 上午",
+                mediaType: "image",
+                mediaUrl: "https://picsum.photos/600/400?random=1",
+                description: "这里是当事人A的第一手文字说明。支持极长的文本输入，因为此面板在手机端和电脑端均支持独立的顺畅上下滚动。你可以根据事件的演变逻辑详细堆砌证据链。",
+                linkUrl: "https://github.com",
+                linkText: "查看公证原始链接 🔗",
+                subThumbs: ["https://picsum.photos/100/100?random=11", "https://picsum.photos/100/100?random=12"],
+                pageBg: "https://picsum.photos/1920/1080?random=101",
+                musicUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" // 示例免费音乐
+            },
+            {
+                id: 2,
+                title: "事件舆论发酵观察期",
+                type: "公共舆情",
+                color: "var(--color-cat3)",
+                isRange: true, // 这是一个时间段
+                startPos: 350,
+                endPos: 650,
+                // 下面是页面排版配置
+                dateStr: "2026年3月2日 - 3月6日",
+                mediaType: "image",
+                mediaUrl: "https://picsum.photos/600/400?random=2",
+                description: "这个事件在时间轴上表现为一个具备长度的矩形长条，代表它持续了一段时间。在这期间，社交媒体平台上的讨论量达到了峰值，多方介入调查。",
+                linkUrl: "",
+                linkText: "",
+                subThumbs: [],
+                pageBg: "",
+                musicUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
+            },
+            {
+                id: 3,
+                title: "当事人 B 提交反驳视频证据",
+                type: "当事人B回应",
+                color: "var(--color-cat2)",
+                isRange: false,
+                startPos: 750,
+                endPos: 0,
+                // 下面是页面排版配置
+                dateStr: "2026年3月7日 夜间",
+                mediaType: "video", // 采用视频排版
+                mediaUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", // 示例公开视频
+                description: "左侧多媒体区域检测到 video 类型后，会自动渲染出功能完善的网页原生视频播放器。右侧则可以放置当事人B的核心自辨证词摘要，图文呼应，还原现场真相。",
+                linkUrl: "https://google.com",
+                linkText: "下载原版未裁剪视频 📥",
+                subThumbs: ["https://picsum.photos/100/100?random=13"],
+                pageBg: "https://picsum.photos/1920/1080?random=102",
+                musicUrl: "" // 无音乐，保持安静
+            }
+        ];
+
+        // 全局运行状态追踪
+        let activeFilterTypes = [];
+        let isDrawerHidden = false;
+        let currentAudioUrl = "";
+
+        // ==========================================================================
+        // 7. 业务逻辑引擎核心（DOM操控与数据注入）
+        // ==========================================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            initFilters();
+            renderTimeline();
+            // 默认载入第一个事件
+            if(TIMELINE_DATA.length > 0) {
+                switchEvent(TIMELINE_DATA[0].id);
+            }
+            initDragScroll();
+        });
+
+        // 初始化过滤器模块
+        function initFilters() {
+            const types = [...new Set(TIMELINE_DATA.map(item => item.type))];
+            activeFilterTypes = [...types]; // 默认全选
+            const panel = document.getElementById('filterPanel');
+            
+            panel.innerHTML = types.map(type => {
+                const item = TIMELINE_DATA.find(d => d.type === type);
+                return `
+                    <label class="filter-checkbox">
+                        <input type="checkbox" checked value="${type}" onchange="handleFilterChange(this)">
+                        <span style="color: ${item.color}">${type}</span>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        // 监听分类勾选动作
+        function handleFilterChange(cb) {
+            if (cb.checked) {
+                activeFilterTypes.push(cb.value);
+            } else {
+                activeFilterTypes = activeFilterTypes.filter(t => t !== cb.value);
+            }
+            renderTimeline();
+        }
+
+        // 开关分类选择面板
+        function toggleFilterPanel() {
+            document.getElementById('filterPanel').classList.toggle('show');
+        }
+
+        // 开关下抽屉隐藏/展现状态
+        function toggleDrawer() {
+            const drawer = document.getElementById('timelineDrawer');
+            const btn = document.getElementById('drawerTriggerBtn');
+            isDrawerHidden = !isDrawerHidden;
+            
+            if (isDrawerHidden) {
+                drawer.classList.add('hidden');
+                btn.innerText = "▲ 唤出时间轴";
+            } else {
+                drawer.classList.remove('hidden');
+                btn.innerText = "▼ 隐藏时间轴";
+            }
+        }
+
+        // 渲染轴基础视图
+        function renderTimeline() {
+            const sliderView = document.getElementById('sliderView');
+            // 清理旧节点（保留主轴线）
+            const nodes = sliderView.querySelectorAll('.timeline-node');
+            nodes.forEach(n => n.remove());
+
+            // 动态筛选匹配的数据
+            const filteredData = TIMELINE_DATA.filter(item => activeFilterTypes.includes(item.type));
+
+            // 计算轴的总长度
+            let maxPos = 1000;
+            TIMELINE_DATA.forEach(d => {
+                if(d.startPos > maxPos) maxPos = d.startPos;
+                if(d.isRange && d.endPos > maxPos) maxPos = d.endPos;
+            });
+            document.getElementById('axisLine').style.width = (maxPos + 300) + 'px';
+
+            // 开始向轴上打点
+            filteredData.forEach((event, index) => {
+                const nodeDiv = document.createElement('div');
+                nodeDiv.className = 'timeline-node';
+                nodeDiv.id = `node-${event.id}`;
+                nodeDiv.style.left = event.startPos + 'px';
+
+                // 高度交错控制（防标签撞车）
+                const posClass = (index % 2 === 0) ? 'pos-top' : 'pos-bottom';
+
+                let interactiveHtml = '';
+                if (!event.isRange) {
+                    // 时间点：小圆点 + 标签框
+                    interactiveHtml = `
+                        <div class="node-dot" style="border-color: ${event.color}" onclick="switchEvent(${event.id})"></div>
+                        <div class="node-label ${posClass}" style="border-bottom-color: ${event.color}" onclick="switchEvent(${event.id})">
+                            <div class="stem-line"></div>
+                            ${event.title}
+                        </div>
+                    `;
+                } else {
+                    // 时间段：矩形跨度条 + 标签框
+                    const barWidth = event.endPos - event.startPos;
+                    interactiveHtml = `
+                        <div class="node-range-bar" style="width: ${barWidth}px; background: ${event.color}" onclick="switchEvent(${event.id})"></div>
+                        <div class="node-label ${posClass}" style="left: ${barWidth/2}px; border-bottom-color: ${event.color}" onclick="switchEvent(${event.id})">
+                            <div class="stem-line"></div>
+                            ${event.title}
+                        </div>
+                    `;
+                }
+
+                nodeDiv.innerHTML = interactiveHtml;
+                sliderView.appendChild(nodeDiv);
+            });
+        }
+
+        // 核心切页系统：点击执行
+        function switchEvent(id) {
+            const event = TIMELINE_DATA.find(d => d.id === id);
+            if(!event) return;
+
+            // 1. 切换激活节点高亮样式
+            document.querySelectorAll('.timeline-node').forEach(n => n.classList.remove('active'));
+            const activeNode = document.getElementById(`node-${id}`);
+            if(activeNode) activeNode.classList.add('active');
+
+            // 2. 刷新上半部分详情视窗排版结构 (精确符合手绘UI规划)
+            const viewPort = document.getElementById('detailViewport');
+            const contentBox = document.getElementById('detailContent');
+
+            // 渲染左侧媒体区HTML
+            let mediaHtml = '';
+            if (event.mediaType === 'video') {
+                mediaHtml = `<video src="${event.mediaUrl}" controls autoplay muted></video>`;
+            } else {
+                mediaHtml = `<img src="${event.mediaUrl}" alt="Main Media">`;
+            }
+
+            // 渲染右下角小型画廊
+            let galleryHtml = '';
+            if (event.subThumbs && event.subThumbs.length > 0) {
+                galleryHtml = `<div class="sub-gallery">
+                    ${event.subThumbs.map(t => `<img src="${t}" class="sub-thumb">`).join('')}
+                </div>`;
+            }
+
+            // 渲染超链接
+            let linkHtml = '';
+            if (event.linkUrl) {
+                linkHtml = `<a href="${event.linkUrl}" target="_blank" class="custom-link">${event.linkText}</a>`;
+            }
+
+            // 整体写入 DOM 节点
+            contentBox.innerHTML = `
+                <div class="media-box">
+                    ${mediaHtml}
+                </div>
+                <div class="info-box">
+                    <h2>${event.title}</h2>
+                    <div class="date-tag">⏱️ 时间节点：${event.dateStr}</div>
+                    <div class="desc-text">${event.description}</div>
+                    ${linkHtml}
+                    ${galleryHtml}
+                </div>
+            `;
+
+            // 3. 灵活定制每一页自己的独立大背景图与色调
+            if (event.pageBg) {
+                viewPort.style.backgroundImage = `url('${event.pageBg}')`;
+            } else {
+                viewPort.style.backgroundImage = 'none';
+            }
+
+            // 4. 精准音频切道控制（跨事件无缝切换）
+            const audioCtrl = document.getElementById('bgAudio');
+            if (event.musicUrl) {
+                if (currentAudioUrl !== event.musicUrl) {
+                    audioCtrl.src = event.musicUrl;
+                    currentAudioUrl = event.musicUrl;
+                    // 注意：根据现代浏览器安全策略，可能需要用户在页面发生首次任意点击后方可自动播放
+                    audioCtrl.play().catch(() => console.log("音频播放需要用户交互激活"));
+                }
+            } else {
+                audioCtrl.pause();
+                currentAudioUrl = "";
+            }
+        }
+
+        // 支持PC端用鼠标对横向时间轴进行按住拖拽滑动
+        function initDragScroll() {
+            const slider = document.getElementById('sliderView');
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+
+            slider.addEventListener('mousedown', (e) => {
+                if(e.target.closest('.node-label') || e.target.closest('.node-dot') || e.target.closest('.node-range-bar')) return;
+                isDown = true;
+                startX = e.pageX - slider.offsetLeft;
+                scrollLeft = slider.scrollLeft;
+            });
+            slider.addEventListener('mouseleave', () => { isDown = false; });
+            slider.addEventListener('mouseup', () => { isDown = false; });
+            slider.addEventListener('mousemove', (e) => {
+                if(!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - slider.offsetLeft;
+                const walk = (x - startX) * 1.5; // 滑动系数调节
+                slider.scrollLeft = scrollLeft - walk;
+            });
+        }
+    </script>
+</body>
+</html>
