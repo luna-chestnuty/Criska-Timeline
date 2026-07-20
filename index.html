@@ -15,11 +15,11 @@
             --text-sub: #a0aec0;
             --axis-line-color: #4a5568;
             --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            
-            /* 分类颜色池 */
-            --color-cat1: #3b82f6;
-            --color-cat2: #10b981;
-            --color-cat3: #f59e0b;
+
+            /* 分类颜色池（在此处自定义你的颜色1和颜色2） */
+            --color-custom-1: #3b82f6; /* 请在此处修改你的【颜色1】(示例为蓝色) */
+            --color-custom-2: #ef4444; /* 请在此处修改你的【颜色2】(示例为红色) */
+            --color-cat3: #f59e0b;     /* 其他类型颜色 */
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -62,15 +62,17 @@
 
         .filter-panel {
             position: fixed;
-            top: -100px; left: 50%;
+            top: -150px; left: 50%;
             transform: translateX(-50%);
             background: var(--panel-bg);
-            padding: 15px 25px;
+            padding: 20px 25px;
             border-radius: 0 0 12px 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
             z-index: 99;
-            display: flex;
-            gap: 15px;
+            /* 修改为 grid 布局：固定 7 列，实现上下对齐 */
+            display: grid;
+            grid-template-columns: repeat(7, minmax(100px, 1fr));
+            gap: 15px 20px;
             align-items: center;
             transition: top 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             border: 1px solid #2d3748;
@@ -313,16 +315,41 @@
                 });
         });
 
+        // 初始化过滤器模块（硬编码固定顺序与两行上下对齐结构）
         function initFilters() {
-            const types = [...new Set(TIMELINE_DATA.map(item => item.type))];
-            activeFilterTypes = [...types];
+            // 严格按照前缀成对排列，以便在 grid 布局下 1 在上、2 在下精准对齐
+            const fixedTypes = [
+                "生涯1", "比赛1", "社交媒体1", "采访1", "恋情1", "八卦1", "其他",
+                "生涯2", "比赛2", "社交媒体2", "采访2", "恋情2", "八卦2"
+            ];
+            
+            // 提取当前数据中实际存在的类型，防止渲染未定义事件
+            const existingTypes = [...new Set(TIMELINE_DATA.map(item => item.type))];
+            activeFilterTypes = [...existingTypes]; // 默认全选
+
             const panel = document.getElementById('filterPanel');
-            panel.innerHTML = types.map(type => {
-                const item = TIMELINE_DATA.find(d => d.type === type);
+            
+            panel.innerHTML = fixedTypes.map((type, index) => {
+                // 如果是“其他”分类，单独占第7列，下方留空
+                if (type === "其他") {
+                    const hasOther = existingTypes.includes("其他");
+                    return `<label class="filter-checkbox" style="grid-column: 7; grid-row: 1; ${hasOther ? '' : 'opacity:0.3;'}">
+                        <input type="checkbox" ${hasOther ? 'checked' : 'disabled'} value="其他" onchange="handleFilterChange(this)">
+                        <span style="color: var(--color-cat3)">其他</span>
+                    </label>`;
+                }
+
+                // 判断属于 行1 还是 行2，并分配对应的列和颜色
+                const isSuffix1 = type.endsWith("1");
+                const colIndex = (index % 7) + 1; 
+                const rowIndex = isSuffix1 ? 1 : 2;
+                const textColor = isSuffix1 ? "var(--color-custom-1)" : "var(--color-custom-2)";
+                const isExist = existingTypes.includes(type);
+
                 return `
-                    <label class="filter-checkbox">
-                        <input type="checkbox" checked value="${type}" onchange="handleFilterChange(this)">
-                        <span style="color: ${item.color || 'var(--color-cat1)'}">${type}</span>
+                    <label class="filter-checkbox" style="grid-column: ${colIndex}; grid-row: ${rowIndex}; ${isExist ? '' : 'opacity:0.3;'}">
+                        <input type="checkbox" ${isExist ? 'checked' : 'disabled'} value="${type}" onchange="handleFilterChange(this)">
+                        <span style="color: ${textColor}">${type}</span>
                     </label>
                 `;
             }).join('');
