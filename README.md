@@ -4,7 +4,7 @@ The whole life of these two men
 欢迎来到本项目。本仓库旨在客观、中立地梳理当事人 A 与当事人 B 之间的事件演变脉络。
 
 ### 🌐 正式访问入口
-👉 **[点击此处立刻进入交互式时间线网页]((https://luna-chestnuty.github.io/Criska-Timeline/))**
+👉 **[点击此处立刻进入交互式时间线网页](https://luna-chestnuty.github.io/Criska-Timeline/)**
 *(建议在电脑端或手机端直接打开，支持横向时间轴拖拽、分类筛选及点击展开详细证据链)*
 
 ---
