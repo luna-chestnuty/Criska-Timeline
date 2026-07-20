@@ -200,6 +200,9 @@
             background-color: var(--axis-line-color);
             z-index: 1;
         }
+        /* 新增：年份刻度线与文字标签样式 */
+        .year-tick { position: absolute; top: 55%; width: 1px; height: 10px; background: var(--axis-line-color); z-index: 1; }
+        .year-tick-label { position: absolute; top: 65%; transform: translateX(-50%); font-size: 0.75rem; color: var(--text-sub); }
 
         .timeline-node {
             position: absolute;
@@ -374,24 +377,58 @@
             }
         }
 
+        // 渲染等比例真实时间轴
         function renderTimeline() {
             const sliderView = document.getElementById('sliderView');
-            sliderView.querySelectorAll('.timeline-node').forEach(n => n.remove());
+            // 清理旧节点、刻度和标签
+            sliderView.querySelectorAll('.timeline-node, .year-tick, .year-tick-label').forEach(n => n.remove());
 
+            const START_YEAR = 1980;
+            const END_YEAR = 2027;
+            const PX_PER_YEAR = 120; // 每一年的像素宽度（可调节轴的长短疏密）
+            const MS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
+            const timelineStartTime = new Date(`${START_YEAR}-01-01`).getTime();
+
+            // 1. 设置主轴的总像素长度并绘制年份刻度
+            const totalWidth = (END_YEAR - START_YEAR + 1) * PX_PER_YEAR + 100;
+            document.getElementById('axisLine').style.width = totalWidth + 'px';
+
+            for (let y = START_YEAR; y <= END_YEAR; y++) {
+                const yearPos = (y - START_YEAR) * PX_PER_YEAR + 50; // 留 50px 边距
+                
+                // 画刻度线
+                const tick = document.createElement('div');
+                tick.className = 'year-tick';
+                tick.style.left = yearPos + 'px';
+                sliderView.appendChild(tick);
+
+                // 写年份字
+                const label = document.createElement('div');
+                label.className = 'year-tick-label';
+                label.style.left = yearPos + 'px';
+                label.innerText = y;
+                sliderView.appendChild(label);
+            }
+
+            // 辅助函数：根据真实日期计算轴上对应的像素坐标
+            function dateToStrPos(dateStr) {
+                if(!dateStr) return 0;
+                const time = new Date(dateStr).getTime();
+                const diffStr = time - timelineStartTime;
+                return (diffStr / MS_PER_YEAR) * PX_PER_YEAR + 50;
+            }
+
+            // 2. 动态筛选并打点
             const filteredData = TIMELINE_DATA.filter(item => activeFilterTypes.includes(item.type));
 
-            let maxPos = 1000;
-            TIMELINE_DATA.forEach(d => {
-                if(d.startPos > maxPos) maxPos = d.startPos;
-                if(d.isRange && d.endPos > maxPos) maxPos = d.endPos;
-            });
-            document.getElementById('axisLine').style.width = (maxPos + 300) + 'px';
-
             filteredData.forEach((event, index) => {
+                const startX = dateToStrPos(event.startDate);
+                if (startX < 0 || startX > totalWidth) return; // 过滤掉超出1980-2027范围的数据
+
                 const nodeDiv = document.createElement('div');
                 nodeDiv.className = 'timeline-node';
                 nodeDiv.id = `node-${event.id}`;
-                nodeDiv.style.left = event.startPos + 'px';
+                nodeDiv.style.left = startX + 'px';
 
                 const posClass = (index % 2 === 0) ? 'pos-top' : 'pos-bottom';
                 const nodeColor = event.color || 'var(--color-cat1)';
@@ -405,7 +442,8 @@
                         </div>
                     `;
                 } else {
-                    const barWidth = event.endPos - event.startPos;
+                    const endX = dateToStrPos(event.endDate);
+                    const barWidth = Math.max(endX - startX, 8); // 确保最少有8px宽，防止时间过短无法点击
                     interactiveHtml = `
                         <div class="node-range-bar" style="width: ${barWidth}px; background: ${nodeColor}" onclick="switchEvent(${event.id})"></div>
                         <div class="node-label ${posClass}" style="left: ${barWidth/2}px; border-bottom-color: ${nodeColor}" onclick="switchEvent(${event.id})">
