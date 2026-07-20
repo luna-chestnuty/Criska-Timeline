@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "title": "当事人 A 首次发布公开声明",
+    "type": "当事人A行动",
+    "color": "var(--color-cat1)",
+    "isRange": false,
+    "startPos": 150,
+    "endPos": 0,
+    "contentFile": "data/event-01.json"
+  },
+  {
+    "id": 2,
+    "title": "舆论爆发期",
+    "type": "公共舆情",
+    "color": "var(--color-cat3)",
+    "isRange": true,
+    "startPos": 350,
+    "endPos": 650,
+    "contentFile": "data/event-02.json"
+  }
+]
