@@ -4,17 +4,26 @@
     "title": "当事人 A 首次发布公开声明",
     "type": "生涯1",
     "isRange": false,
-    "startDate": "1985-02-05", 
+    "startDate": "1982-04-22", 
     "endDate": "",
     "contentFile": "data/event-01.json"
   },
   {
     "id": 2,
+    "title": "",
+    "type": "生涯2",
+    "isRange": false,
+    "startDate": "1985-02-05", 
+    "endDate": "",
+    "contentFile": "data/event-02.json"
+  },
+  {
+    "id": 7,
     "title": "某签约封闭训练期",
     "type": "比赛2",
     "isRange": true, 
     "startDate": "2010-03-01",
     "endDate": "2012-08-30",
-    "contentFile": "data/event-02.json"
+    "contentFile": "data/event-03.json"
   }
 ]
