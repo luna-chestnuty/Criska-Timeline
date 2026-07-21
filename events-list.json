@@ -1,23 +1,9 @@
 [
   {"id": 1, "title": "A诞生", "type": "生涯1", "startDate": "1982-04-22",  "endDate": "",  "isRange": false, "contentFile": "data/event-01.json"},
-  {
-    "id": 2,
-    "title": "",
-    "type": "生涯2",
-    "isRange": false,
-    "startDate": "1985-02-05", 
-    "endDate": "",
-    "contentFile": "data/event-02.json"
-  },
-  {
-    "id": 2,
-    "title": "",
-    "type": "生涯2",
-    "isRange": false,
-    "startDate": "1985-02-05", 
-    "endDate": "",
-    "contentFile": "data/event-02.json"
-  },
+  {"id": 2, "title": "B诞生", "type": "生涯2", "startDate": "1985-02-05",  "endDate": "",  "isRange": false, "contentFile": "data/event-02.json"},
+  {"id": 3, "title": "A诞生", "type": "生涯1", "startDate": "1982-04-22",  "endDate": "",  "isRange": false, "contentFile": "data/event-03.json"},
+
+
   {
     "id": 7,
     "title": "某签约封闭训练期",
