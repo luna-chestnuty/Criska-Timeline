@@ -6,7 +6,7 @@
     "isRange": false,
     "startDate": "1985-02-05", 
     "endDate": "",
-    "contentFile": "data/event1.json"
+    "contentFile": "data/event-01.json"
   },
   {
     "id": 2,
@@ -15,6 +15,6 @@
     "isRange": true, 
     "startDate": "2010-03-01",
     "endDate": "2012-08-30",
-    "contentFile": "data/event2.json"
+    "contentFile": "data/event-02.json"
   }
 ]
