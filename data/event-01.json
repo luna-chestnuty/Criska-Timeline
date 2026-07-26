@@ -1,8 +1,8 @@
 {
-  "dateStr": "2026年3月1日 上午",
+  "dateStr": "1982年4月22日",
   "mediaType": "image",
   "mediaUrl": "https://picsum.photos/600/400?random=1",
-  "description": "这里是写在 event1.json 里的独立长篇大论。你在这里写几万字都可以，完全不会影响到 index.html 的加载速度！",
+  "description": "<b>卡卡（Kaká）</b>，全名里卡多·伊泽克森·多斯桑托斯·莱特（Ricardo Izecson dos Santos Leite），出生于巴西联邦区加玛（Gama, Federal District, Brazil）。",
   "linkUrl": "https://example.com",
   "linkText": "点击前往原始微博链接 🔗",
   "subThumbs": ["https://picsum.photos/100/100?random=11"],
