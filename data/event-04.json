@@ -1,1 +1,11 @@
-
+{
+  "dateStr": "2002年3月7日",
+  "mediaType": "image",
+  "mediaUrl": "https://picsum.photos/600/400?random=1",
+  "description": "这是一场巴西主场对冰岛的国际友谊赛。最终比分：巴西6-1冰岛。卡卡在本场比赛首发登场，在第47分钟斩获其在巴西国家队的首粒进球，也是本场比赛巴西队的第三个进球。",
+  "linkUrl": "https://example.com",
+  "linkText": "点击前往原始微博链接 🔗",
+  "subThumbs": ["https://picsum.photos/100/100?random=11"],
+  "pageBg": "https://picsum.photos/1920/1080?random=101",
+  "musicUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+}
