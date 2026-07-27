@@ -1,1 +1,11 @@
-
+{
+  "dateStr": "2002年1月31日",
+  "mediaType": "image",
+  "mediaUrl": "https://picsum.photos/600/400?random=1",
+  "description": "这是一场巴西对玻利维亚的国际友谊赛。最终比分： 巴西 6 - 0 玻利维亚。卡卡（16号）在本场比赛的第69分钟替补登场，并在第75分钟领到一张黄牌。",
+  "linkUrl": "https://example.com",
+  "linkText": "点击前往原始微博链接 🔗",
+  "subThumbs": ["https://picsum.photos/100/100?random=11"],
+  "pageBg": "https://picsum.photos/1920/1080?random=101",
+  "musicUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+}
